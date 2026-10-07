@@ -1,5 +1,5 @@
-import rexPageManipulationPlugin from '@bric/rex-page-manipulation/browser'
+import rexLocalSearchPlugin from '@bric/rex-local-search/browser'
 
-console.log(`Imported ${rexPageManipulationPlugin} into the browser context for ${window.location.href}...`)
+console.log(`Imported ${rexLocalSearchPlugin} into the browser context for ${window.location.href}...`)
 
-self['rexPageManipulationPlugin'] = rexPageManipulationPlugin
+self['rexLocalSearchPlugin'] = rexLocalSearchPlugin

@@ -2,7 +2,7 @@
 
 import { test, expect } from './fixtures.js';
 
-test.describe('REX Page Manipulation', () => {
+test.describe('REX Local Search', () => {
   test('Service worker test: Set identifier', async ({serviceWorker}) => {
     return new Promise<void>((resolve) => {
       setTimeout(() => {

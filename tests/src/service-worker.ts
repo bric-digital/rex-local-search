@@ -4,12 +4,12 @@
 // extension background service worker context.
 
 import rexCorePlugin from '@bric/rex-core/service-worker'
-import rexPageManipulationPlugin from '@bric/rex-page-manipulation/service-worker'
+import rexLocalSearchPlugin from '@bric/rex-local-search/service-worker'
 
 console.log(`Imported ${rexCorePlugin} into service worker context...`)
-console.log(`Imported ${rexPageManipulationPlugin} into service worker context...`)
+console.log(`Imported ${rexLocalSearchPlugin} into service worker context...`)
 
 self['rexCorePlugin'] = rexCorePlugin
-self['rexPageManipulationPlugin'] = rexPageManipulationPlugin
+self['rexLocalSearchPlugin'] = rexLocalSearchPlugin
 
 rexCorePlugin.setup()

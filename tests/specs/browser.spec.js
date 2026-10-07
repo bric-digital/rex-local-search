@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures.js';
 
-test.describe('REX Page Manipulation', () => {
+test.describe('REX Local Search', () => {
 
   /**
    * Commenting out as declarative net blocks don't seem to work in this
