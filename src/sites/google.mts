@@ -25,10 +25,28 @@ export class GoogleLocalSite extends LocalSearchSite {
     console.log('[rex-local-search:google] Detecting local search widgets...')
 
     for (const element of document.getElementsByTagName('h2')) {
-      if (element.textContent === 'Local Search') {
+      if (['Local Search', 'Local Results'].includes(element.textContent)) {
         if (element.parentElement !== null) {
           console.log('[rex-local-search:google] Found Local Search element.')
-          element.parentElement.classList.add('rex-local-search-widget')
+          const localWidgetElement = element.parentElement
+
+          localWidgetElement.classList.add('rex-local-search-widget')
+
+          const matches = localWidgetElement.querySelectorAll('[data-record-click-time]')
+
+          for (const match of matches) {
+            match.classList.add('rex-local-search-widget-row')
+          }
+
+          const mapMatches = localWidgetElement.querySelectorAll('h3')
+
+          for (const match of mapMatches) {
+            const matchElement = match as Element
+
+            if (matchElement.innerHTML.trim() === 'Map') {
+              matchElement.parentElement?.classList.add('rex-local-search-widget-map')
+            }
+          }
 
           if (element.parentElement.children !== undefined) {
             for (const childElement of element.parentElement.children) {
@@ -129,9 +147,9 @@ export class GoogleLocalSite extends LocalSearchSite {
               match.classList.add('rex-local-search-widget-row')
             }
 
-            const mapLabel = localWidgetElement.querySelectorAll('h3')
+            const mapMatches = localWidgetElement.querySelectorAll('h3')
 
-            for (const match of matches) {
+            for (const match of mapMatches) {
               const matchElement = match as Element
 
               if (matchElement.innerHTML.trim() === 'Map') {
