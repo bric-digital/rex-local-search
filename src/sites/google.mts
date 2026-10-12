@@ -32,7 +32,7 @@ export class GoogleLocalSite extends LocalSearchSite {
 
           if (element.parentElement.children !== undefined) {
             for (const childElement of element.parentElement.children) {
-              if (childElement.tagName === 'h2') {
+              if (childElement.tagName.toLowerCase() === 'h2') {
                 // Skip
               } else if (childElement.attributes.getNamedItem('data-hveid') !== null) {
                 console.log('[rex-local-search:google] Found Local Search map widget.')
@@ -63,32 +63,34 @@ export class GoogleLocalSite extends LocalSearchSite {
       if (ariaLabel !== null && ariaLabel.value !== null) {
         console.log(`[rex-local-search:google] aria-label: ${ariaLabel.value}`)
 
-        if (ariaLabel.value.startsWith('Places: Location results for')) {
+        if (ariaLabel.value.includes(': Location results for')) {
           if (element.parentElement !== null) {
             console.log('[rex-local-search:google] Found Local Search element.')
-            const localWidgetElement = element.parentElement.parentElement.parentElement.parentElement.parentElement
+            const localWidgetElement = element.parentElement.parentElement?.parentElement?.parentElement?.parentElement
 
-            localWidgetElement.classList.add('rex-local-search-widget')
+            if (localWidgetElement !== null && localWidgetElement !== undefined) {
+              localWidgetElement.classList.add('rex-local-search-widget')
 
-            if (localWidgetElement.children !== undefined) {
-              for (const childElement of localWidgetElement.children) {
-                if (childElement.attributes.getNamedItem('data-vstcp') !== null) {
-                  for (const containerElement of childElement.children) {
-                    for (const itemElement of containerElement.children) {
-                      if (itemElement.attributes.getNamedItem('data-hveid') !== null) {
-                        console.log('[rex-local-search:google] Found Local Search map widget.')
-                        childElement.classList.add('rex-local-search-widget-map')
-                      } else if (itemElement.attributes.getNamedItem('jsname') !== null) {
-                        for (const itemContainerElement of itemElement.children) {
-                          for (const itemBoxElement of itemContainerElement.children) {
-                            const styleAttr =  itemBoxElement.attributes.getNamedItem('style')
+              if (localWidgetElement.children !== undefined) {
+                for (const childElement of localWidgetElement.children) {
+                  if (childElement.attributes.getNamedItem('data-vstcp') !== null) {
+                    for (const containerElement of childElement.children) {
+                      for (const itemElement of containerElement.children) {
+                        if (itemElement.attributes.getNamedItem('data-hveid') !== null) {
+                          console.log('[rex-local-search:google] Found Local Search map widget.')
+                          childElement.classList.add('rex-local-search-widget-map')
+                        } else if (itemElement.attributes.getNamedItem('jsname') !== null) {
+                          for (const itemContainerElement of itemElement.children) {
+                            for (const itemBoxElement of itemContainerElement.children) {
+                              const styleAttr =  itemBoxElement.attributes.getNamedItem('style')
 
-                            if (styleAttr !== null && styleAttr.value === 'z-index:1') {
-                              for (const boxContainerElement of itemBoxElement.children) {
-                                for (const boxRowElement of boxContainerElement.children) {
-                                  if (boxRowElement.attributes.getNamedItem('jsdata') !== null) {
-                                    console.log('[rex-local-search:google] Found Local Search place row.')
-                                    boxRowElement.classList.add('rex-local-search-widget-row')
+                              if (styleAttr !== null && styleAttr.value === 'z-index:1') {
+                                for (const boxContainerElement of itemBoxElement.children) {
+                                  for (const boxRowElement of boxContainerElement.children) {
+                                    if (boxRowElement.attributes.getNamedItem('jsdata') !== null) {
+                                      console.log('[rex-local-search:google] Found Local Search place row.')
+                                      boxRowElement.classList.add('rex-local-search-widget-row')
+                                    }
                                   }
                                 }
                               }
@@ -103,13 +105,41 @@ export class GoogleLocalSite extends LocalSearchSite {
             }
           }
         }
-
       }
 
       const rPos = element.attributes.getNamedItem('data-rpos')
 
       if (rPos !== null) {
         element.classList.add('rex-local-search-result')
+      }
+
+      const attrId = element.attributes.getNamedItem('data-attrid')
+
+      if (attrId !== null && attrId.value === 'lab/cluster/title/Nearby places') {
+        if (element.parentElement !== null) {
+          console.log('[rex-local-search:google] Found Local Search element.')
+          const localWidgetElement = element.parentElement.parentElement?.parentElement
+
+          if (localWidgetElement !== null && localWidgetElement !== undefined) {
+            localWidgetElement.classList.add('rex-local-search-widget')
+
+            const matches = localWidgetElement.querySelectorAll('[data-record-click-time]')
+
+            for (const match of matches) {
+              match.classList.add('rex-local-search-widget-row')
+            }
+
+            const mapLabel = localWidgetElement.querySelectorAll('h3')
+
+            for (const match of matches) {
+              const matchElement = match as Element
+
+              if (matchElement.innerHTML.trim() === 'Map') {
+                matchElement.parentElement?.classList.add('rex-local-search-widget-map')
+              }
+            }
+          }
+        }
       }
     }
   }
