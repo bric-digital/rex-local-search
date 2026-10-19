@@ -8,6 +8,20 @@ const BREADCRUMB_URL = 'https://www.google.com'
 
 const BREADCRUMB_PATH = ' › Places'
 
+const RATING_PATTERN = /^(\d(?:\.\d)?)\s*\(([^)]+)\)/
+
+const DISTANCE_PATTERN = /^\d+(?:\.\d+)?\s*(?:mi|km|ft|m)$/
+
+const YEARS_IN_BUSINESS_PATTERN = /years in business/i
+
+interface LocalPlace {
+  name:string
+  rating?:string
+  reviews?:string
+  distance?:string
+  address?:string
+}
+
 const MAP_PIN_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#ea4335"/><path fill="#ffffff" transform="translate(3.6 3.6) scale(0.7)" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>')
 
 export class GoogleLocalSite extends LocalSearchSite {
@@ -151,9 +165,10 @@ export class GoogleLocalSite extends LocalSearchSite {
         }
 
         const descs = clonedElement.querySelectorAll('[data-sncf="1"]')
+        const description = this.describePlaces(element)
 
         for (const desc of descs) {
-          (desc as HTMLElement).innerText = 'TODO: Generate / mirror search result text'
+          (desc as HTMLElement).innerText = description
 
           console.log(`[rex-local-search:google] Found description`)
         }
@@ -272,5 +287,66 @@ export class GoogleLocalSite extends LocalSearchSite {
     path.textContent = BREADCRUMB_PATH
 
     cite.replaceChildren(BREADCRUMB_URL, path)
+  }
+
+  describePlaces(localPack:HTMLElement):string {
+    return [...localPack.querySelectorAll<HTMLElement>('.rex-local-search-widget-row')]
+      .map((row) => this.parsePlace(row))
+      .filter((place):place is LocalPlace => place !== null)
+      .map((place, index) => this.formatPlace(place, index + 1))
+      .join(' · ')
+  }
+
+  parsePlace(row:HTMLElement):LocalPlace|null {
+    const lines = row.innerText.split('\n').map((line) => line.trim()).filter((line) => line !== '')
+
+    if (lines.includes('Sponsored')) {
+      return null
+    }
+
+    const name = row.querySelector('[role="heading"]')?.textContent?.trim() ?? lines[0]
+
+    if (name === undefined || name === '') {
+      return null
+    }
+
+    const place:LocalPlace = { name }
+    const ratingIndex = lines.findIndex((line) => RATING_PATTERN.test(line))
+    const rating = ratingIndex === -1 ? null : lines[ratingIndex].match(RATING_PATTERN)
+
+    if (rating !== null) {
+      place.rating = rating[1]
+      place.reviews = rating[2]
+
+      const details = (lines[ratingIndex + 1] ?? '').startsWith('"') ? [] : (lines[ratingIndex + 1] ?? '').split('·').map((detail) => detail.trim()).filter((detail) => detail !== '' && YEARS_IN_BUSINESS_PATTERN.test(detail) === false)
+
+      place.distance = details.find((detail) => DISTANCE_PATTERN.test(detail))
+
+      const address = details.filter((detail) => DISTANCE_PATTERN.test(detail) === false).join(', ')
+
+      if (address !== '') {
+        place.address = address
+      }
+    }
+
+    return place
+  }
+
+  formatPlace(place:LocalPlace, position:number):string {
+    const parts = [`${position}. ${place.name}.`]
+
+    if (place.rating !== undefined) {
+      parts.push(`${place.rating} (${place.reviews} reviews).`)
+    }
+
+    if (place.distance !== undefined) {
+      parts.push(`${place.distance}.`)
+    }
+
+    if (place.address !== undefined) {
+      parts.push(place.address)
+    }
+
+    return parts.join(' ')
   }
 }
