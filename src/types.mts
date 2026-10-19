@@ -28,6 +28,7 @@
 
 export interface REXLocalSearchSiteManipulationConfiguration {
   operation:'collapse'|'hide'
+  title?:string
 }
 
 export interface REXLocalSearchSiteStyleConfiguration {
@@ -138,7 +139,7 @@ export class LocalSearchSite {
             const matches = document.querySelectorAll(`.${cssClass}`)
 
             for (const match of matches) {
-              this.collapseElement(match as HTMLElement)
+              this.collapseElement(match as HTMLElement, manipulation)
             }
           }
         }
@@ -148,7 +149,7 @@ export class LocalSearchSite {
     })
   }
 
-  collapseElement(element:HTMLElement) {
+  collapseElement(element:HTMLElement, manipulation:REXLocalSearchSiteManipulationConfiguration) { // eslint-disable-line @typescript-eslint/no-unused-vars
     element.style.display = 'none'
   }
 }

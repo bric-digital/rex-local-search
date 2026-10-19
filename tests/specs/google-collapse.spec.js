@@ -7,15 +7,14 @@ import { test, expect } from './fixtures.js'
 // Google's search URL so the module treats it as a search page without any
 // request reaching Google.
 const staticDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../scripts/express/static')
-
-async function loadResultsPage(page, serviceWorker, fileName) {
+async function loadResultsPage(page, serviceWorker, fileName, query = 'pizza') {
   // The page script reads the configuration once, so a search loaded before
   // rex-core has stored it is never processed.
   await expect.poll(() => serviceWorker.evaluate(() => self.rexCorePlugin.fetchConfiguration().then((configuration) => configuration?.local_search !== undefined)), { timeout: 15000 }).toBe(true)
 
   await page.route('https://www.google.com/search?**', (route) => route.fulfill({ path: path.join(staticDir, fileName) }))
 
-  await page.goto('https://www.google.com/search?q=pizza')
+  await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`)
 }
 
 test.describe('REX Local Search', () => {
@@ -114,6 +113,28 @@ test.describe('REX Local Search', () => {
 
     await expect(description).toContainText(/Example Plumbing.*5\.0.*476.*Chicago, IL/)
     await expect(description).not.toContainText('years in business')
+  })
+
+  test('Collapse fills the configured title template with the search query.', async ({ page, serviceWorker }) => {
+    // A template unlike the module's default, so only a title read from the
+    // configuration can pass.
+    const titleTemplate = 'Configured {{query}} title'
+
+    await expect.poll(() => serviceWorker.evaluate(() => self.rexCorePlugin.fetchConfiguration().then((configuration) => configuration?.local_search !== undefined)), { timeout: 15000 }).toBe(true)
+
+    await serviceWorker.evaluate(async (template) => {
+      const configuration = await self.rexCorePlugin.fetchConfiguration()
+
+      configuration.local_search.sites.google.manipulations['rex-local-search-widget'].title = template
+
+      await self.rexCorePlugin.updateConfiguration(configuration)
+    }, titleTemplate)
+
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html', 'calzone')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    await expect(page.locator('#rso > :first-child h3')).toHaveText('Configured calzone title')
   })
 
   test('Collapse adds the local pack\'s map as a thumbnail when the copied result has none.', async ({ page, serviceWorker }) => {
