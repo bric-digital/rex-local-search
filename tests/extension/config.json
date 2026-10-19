@@ -17,6 +17,19 @@
             "rex-local-search-ai-widget": "border: dotted red 2px;",
             "rex-local-search-ai-widget-row": "border: dotted red 2px;",
             "rex-local-search-ai-widget-map": "border: dotted red 2px;"
+          },
+          "manipulations": {
+            "rex-local-search-widget": {
+              "operation": "collapse",
+              "offset": 0,
+              "title": "Local results for {{query}}",
+              "descriptions": "Nearby: {{placelist:3}}",
+              "icon": "extension:google-logo",
+              "preview": "results.0.preview|extension:google-static-map"
+            }, 
+            "rex-local-search-ai-widget-off": {
+              "operation": "hide"
+            }
           }
         }
       }

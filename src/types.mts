@@ -1,22 +1,34 @@
-    // "local_search": {
-    //   "enabled": true,
-    //   "debug": true,
-    //   "sites": [{
-    //     "google": {
-    //      "id": "google",
-    //       "initial_obscure": true,
-    //       "styles": {
-    //         "rex-local-search-result": "border: solid red 4px;",
-    //         "rex-local-search-widget": "border: solid orange 4px;",
-    //         "rex-local-search-widget-row": "border: solid blue 4px;",
-    //         "rex-local-search-widget-map": "border: solid black 4px;",
-    //         "rex-local-search-detail-sidget": "border: dashed red 4px;",
-    //        "rex-local-search-ai-widget": "border: dotted red 4px;",
-    //         "rex-local-search-ai-widget-row": "border: dotted red 4px;",
-    //         "rex-local-search-ai-widget-map": "border: dotted red 4px;",
-    //        }
-      //   }]
-    // },
+// "local_search": {
+//   "enabled": true,
+//   "debug": true,
+//   "sites": {
+//     "google": {
+//       "id": "google",
+//       "initial_obscure": true,
+//       "styles": {
+//         "rex-local-search-result": "border: solid red 2px;",
+//         "rex-local-search-widget": "border: solid orange 2px;",
+//         "rex-local-search-widget-row": "border: solid blue 2px;",
+//         "rex-local-search-widget-map": "border: solid black 2px;",
+//         "rex-local-search-detail-widget": "border: dashed red 2px;",
+//         "rex-local-search-ai-widget": "border: dotted red 2px;",
+//         "rex-local-search-ai-widget-row": "border: dotted red 2px;",
+//         "rex-local-search-ai-widget-map": "border: dotted red 2px;"
+//       },
+//       "manipulations": {
+//         "rex-local-search-result": {
+//           "operation": "collapse"
+//         }, "rex-local-search-ai-widget": {
+//           "operation": "hide"
+//         }
+//       }
+//     }
+//   }
+// },
+
+export interface REXLocalSearchSiteManipulationConfiguration {
+  operation:'collapse'|'hide'
+}
 
 export interface REXLocalSearchSiteStyleConfiguration {
   [cssClass:string]: string;
@@ -25,7 +37,8 @@ export interface REXLocalSearchSiteStyleConfiguration {
 export interface REXLocalSearchSiteConfiguration {
   id: string,
   initial_obscure?: boolean,
-  styles?: REXLocalSearchSiteStyleConfiguration
+  styles?: REXLocalSearchSiteStyleConfiguration,
+  manipulations?:{[cssClass:string]: REXLocalSearchSiteManipulationConfiguration},
 }
 
 export interface REXLocalSearchConfiguration {
@@ -80,16 +93,62 @@ export class LocalSearchSite {
           }
         }
       }
-    }
 
-    this.detectLocalWidgets()
+      this.detectLocalWidgets().then(() => {
+        console.log(`[rex-local-search] Widgets detected.`)
+
+        this.applyManipulations(config).then(() => {
+          console.log(`[rex-local-search] Manipulations applied.`)
+        })
+      })
+    }
   }
 
   preparePage() {
     throw new Error('Implement preparePage in subclasses.')
   }
 
-  detectLocalWidgets() {
-    // Tag nothing by default
+  detectLocalWidgets():Promise<void> {
+    return new Promise((resolve) => {
+      resolve()
+    })
+  }
+
+  applyManipulations(config:REXLocalSearchSiteConfiguration|undefined):Promise<void> {
+    return new Promise((resolve) => {
+      if (config !== undefined && config.manipulations !== undefined) {
+        for (const cssClass of Object.keys(config.manipulations)) {
+          console.log(`[rex-local-search] manipulating = ${cssClass}`)
+
+          const manipulation = config.manipulations[cssClass]
+
+          console.log(`[rex-local-search] manipulation.operation = ${manipulation.operation}`)
+
+          if (manipulation.operation === 'hide') {
+            console.log(`[rex-local-search] hiding ${cssClass}`)
+
+            const matches = document.querySelectorAll(`.${cssClass}`)
+
+            for (const match of matches) {
+              (match as HTMLElement).style.display = 'none'
+            }
+          } else if (manipulation.operation === 'collapse') {
+            console.log(`[rex-local-search] collapsing ${cssClass}`)
+
+            const matches = document.querySelectorAll(`.${cssClass}`)
+
+            for (const match of matches) {
+              this.collapseElement(match as HTMLElement)
+            }
+          }
+        }
+      }
+
+      resolve()
+    })
+  }
+
+  collapseElement(element:HTMLElement) {
+    element.style.display = 'none'
   }
 }

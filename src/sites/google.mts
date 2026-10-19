@@ -1,4 +1,4 @@
-import { LocalSearchSite, REXLocalSearchSiteConfiguration } from '../types.mjs'
+import { LocalSearchSite } from '../types.mjs'
 
 export class GoogleLocalSite extends LocalSearchSite {
   name():string {
@@ -21,144 +21,191 @@ export class GoogleLocalSite extends LocalSearchSite {
 
   }
 
-  detectLocalWidgets() {
-    console.log('[rex-local-search:google] Detecting local search widgets...')
+  detectLocalWidgets():Promise<void> {
+    return new Promise((resolve) => {
+      console.log('[rex-local-search:google] Detecting local search widgets...')
 
-    for (const element of document.getElementsByTagName('h2')) {
-      if (['Local Search', 'Local Results'].includes(element.textContent)) {
-        if (element.parentElement !== null) {
-          console.log('[rex-local-search:google] Found Local Search element.')
-          const localWidgetElement = element.parentElement
+      // 0. Find rex-navigation
 
-          localWidgetElement.classList.add('rex-local-search-widget')
+      let foundNavigation:boolean = false
 
-          const matches = localWidgetElement.querySelectorAll('[data-record-click-time]')
-
-          for (const match of matches) {
-            match.classList.add('rex-local-search-widget-row')
-          }
-
-          const mapMatches = localWidgetElement.querySelectorAll('h3')
-
-          for (const match of mapMatches) {
-            const matchElement = match as Element
-
-            if (matchElement.innerHTML.trim() === 'Map') {
-              matchElement.parentElement?.classList.add('rex-local-search-widget-map')
-            }
-          }
-
-          if (element.parentElement.children !== undefined) {
-            for (const childElement of element.parentElement.children) {
-              if (childElement.tagName.toLowerCase() === 'h2') {
-                // Skip
-              } else if (childElement.attributes.getNamedItem('data-hveid') !== null) {
-                console.log('[rex-local-search:google] Found Local Search map widget.')
-                childElement.classList.add('rex-local-search-widget-map')
-              } else {
-                const styleAttr =  childElement.attributes.getNamedItem('style')
-
-                if (styleAttr !== null && styleAttr.value === 'z-index:1') {
-                  for (const containerElement of childElement.children) {
-                    for (const rowElement of containerElement.children) {
-                      if (rowElement.attributes.getNamedItem('jsdata') !== null) {
-                        console.log('[rex-local-search:google] Found Local Search place row.')
-                        rowElement.classList.add('rex-local-search-widget-row')
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+      for (const element of document.querySelectorAll('div[role="navigation"]')) {
+        if (foundNavigation === false) {
+          element.parentElement?.classList.add('rex-local-search-navigation')
+          element.parentElement?.setAttribute('title', 'rex-local-search-navigation')
+          foundNavigation = true
         }
       }
-    }
 
-    for (const element of document.getElementsByTagName('div')) {
-      const ariaLabel = element.attributes.getNamedItem('aria-label')
+      let widgetsFound:number = 0
 
-      if (ariaLabel !== null && ariaLabel.value !== null) {
-        console.log(`[rex-local-search:google] aria-label: ${ariaLabel.value}`)
+      // 1. Find rex-local-search-widget
 
-        if (ariaLabel.value.includes(': Location results for')) {
-          if (element.parentElement !== null) {
+      for (const element of document.querySelectorAll('div[aria-label*=" Location results for "]')) {
+        let hveidCount = 2
+
+        let containerElement:HTMLElement|null = (element as HTMLElement)
+
+        while (hveidCount > 0 && containerElement !== null && containerElement.tagName.toLowerCase() !== 'body') {
+          if (containerElement.getAttribute('data-hveid') !== null) {
+            hveidCount -= 1
+          }
+
+          if (hveidCount === 0) {
+            break
+          } else {
+            containerElement = containerElement.parentElement
+          }
+        }
+      
+        if (containerElement !== null && containerElement.tagName.toLowerCase() !== 'body') {
+          console.log('[rex-local-search:google] Found Local Search element.')
+          containerElement.classList.add('rex-local-search-widget')
+          widgetsFound += 1
+        }
+      }
+
+      if (widgetsFound === 0) {
+        for (const element of document.getElementsByTagName('h2')) {
+          if (['Local Search', 'Local Results'].includes(element.textContent)) {
             console.log('[rex-local-search:google] Found Local Search element.')
-            const localWidgetElement = element.parentElement.parentElement?.parentElement?.parentElement?.parentElement
 
-            if (localWidgetElement !== null && localWidgetElement !== undefined) {
-              localWidgetElement.classList.add('rex-local-search-widget')
+            let containerElement:HTMLElement|null = (element as HTMLElement)
 
-              if (localWidgetElement.children !== undefined) {
-                for (const childElement of localWidgetElement.children) {
-                  if (childElement.attributes.getNamedItem('data-vstcp') !== null) {
-                    for (const containerElement of childElement.children) {
-                      for (const itemElement of containerElement.children) {
-                        if (itemElement.attributes.getNamedItem('data-hveid') !== null) {
-                          console.log('[rex-local-search:google] Found Local Search map widget.')
-                          childElement.classList.add('rex-local-search-widget-map')
-                        } else if (itemElement.attributes.getNamedItem('jsname') !== null) {
-                          for (const itemContainerElement of itemElement.children) {
-                            for (const itemBoxElement of itemContainerElement.children) {
-                              const styleAttr =  itemBoxElement.attributes.getNamedItem('style')
+            while (containerElement !== null && containerElement.tagName.toLowerCase() !== 'body') {
+              if (containerElement.getAttribute('data-rpos') !== null) {
+                  containerElement.classList.add('rex-local-search-widget')
+                  widgetsFound += 1
 
-                              if (styleAttr !== null && styleAttr.value === 'z-index:1') {
-                                for (const boxContainerElement of itemBoxElement.children) {
-                                  for (const boxRowElement of boxContainerElement.children) {
-                                    if (boxRowElement.attributes.getNamedItem('jsdata') !== null) {
-                                      console.log('[rex-local-search:google] Found Local Search place row.')
-                                      boxRowElement.classList.add('rex-local-search-widget-row')
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
+                  break
               }
+
+              containerElement = containerElement.parentElement
             }
           }
         }
       }
 
-      const rPos = element.attributes.getNamedItem('data-rpos')
+      for (const widgetElement of document.querySelectorAll('.rex-local-search-widget')) {
+        // 2. Find local-search-widget-map 
 
-      if (rPos !== null) {
-        element.classList.add('rex-local-search-result')
-      }
+        console.log('[rex-local-search:google] Detecting local search widget map...')
 
-      const attrId = element.attributes.getNamedItem('data-attrid')
+        for (const element of widgetElement.getElementsByTagName('h3')) {
+          if (['Map'].includes(element.textContent.trim())) {
+            console.log('[rex-local-search:google] Found Local Search Map element.')
 
-      if (attrId !== null && attrId.value === 'lab/cluster/title/Nearby places') {
-        if (element.parentElement !== null) {
-          console.log('[rex-local-search:google] Found Local Search element.')
-          const localWidgetElement = element.parentElement.parentElement?.parentElement
-
-          if (localWidgetElement !== null && localWidgetElement !== undefined) {
-            localWidgetElement.classList.add('rex-local-search-widget')
-
-            const matches = localWidgetElement.querySelectorAll('[data-record-click-time]')
-
-            for (const match of matches) {
-              match.classList.add('rex-local-search-widget-row')
-            }
-
-            const mapMatches = localWidgetElement.querySelectorAll('h3')
-
-            for (const match of mapMatches) {
-              const matchElement = match as Element
-
-              if (matchElement.innerHTML.trim() === 'Map') {
-                matchElement.parentElement?.classList.add('rex-local-search-widget-map')
-              }
-            }
+            element.parentElement?.classList.add('rex-local-search-widget-map')
           }
         }
+
+        // 3. Find rex-local-search-widget-row 
+
+        console.log('[rex-local-search:google] Detecting local search widget rows...')
+
+        for (const rowElement of widgetElement.querySelectorAll('[data-record-click-time]')) {
+          rowElement.classList.add('rex-local-search-widget-row')
+        }
+      }
+
+      for (const resultRowElement of document.querySelectorAll('[data-rpos]')) {
+        if (resultRowElement.classList.contains('rex-local-search-widget') === false) {
+          resultRowElement.classList.add('rex-local-search-result')
+        }
+      }
+
+      resolve()
+    })
+  }
+
+  collapseElement(element:HTMLElement) {
+    console.log('[rex-local-search:google] collapseElement')
+
+    const matches = document.querySelectorAll('.rex-local-search-result')
+
+    console.log(`[rex-local-search:google] ${matches.length}`)
+
+    if (matches.length > 0) {
+      const firstParent = (matches[0] as HTMLElement).parentElement
+
+      if (firstParent !== null) {
+        console.log(`[rex-local-search:google] have first parent`)
+        const clonedElement:HTMLElement = firstParent.cloneNode(true) as HTMLElement
+
+        const h3s = clonedElement.querySelectorAll('h3')
+
+        for (const h3 of h3s) {
+          console.log(`[rex-local-search:google] Found title`)
+
+          h3.innerText = 'TODO: Mirror widget title'
+        }
+
+        const descs = clonedElement.querySelectorAll('[data-sncf="1"]')
+
+        for (const desc of descs) {
+          (desc as HTMLElement).innerText = 'TODO: Generate / mirror search result text'
+
+          console.log(`[rex-local-search:google] Found description`)
+        }
+
+        firstParent.before(clonedElement)
+
+        const noTrans = clonedElement.querySelectorAll('.notranslate')
+
+        for (const noTran of noTrans) {
+          for (const cite of noTran.querySelectorAll('cite')) {
+            console.log(`[rex-local-search:google] Found breadcrumb`)
+
+            cite.innerText = 'TODO: URL breadcrumb'
+          }
+
+          const pageImgs = clonedElement.querySelectorAll('img[data-csiid]')
+
+          for (const pageImg of pageImgs) { // TODO: Replace with generic site icon
+            console.log(`[rex-local-search:google] Found page icon`)
+
+            const imgElement = pageImg as HTMLElement
+
+            imgElement.style.backgroundColor = '#808080'
+
+            imgElement.removeAttribute('data-csiid')
+          }
+        }
+
+        const svgs = clonedElement.querySelectorAll('svg')
+
+        for (const svg of svgs) { // Hide any embedded SVG buttons...
+          console.log(`[rex-local-search:google] Found button to hide`)
+          svg.style.display = 'none'
+        }
+
+        const pageImgs = clonedElement.querySelectorAll('img[data-csiid]')
+
+        for (const pageImg of pageImgs) {
+          (pageImg as HTMLElement).style.display = 'none'
+
+          console.log(`[rex-local-search:google] Found page thumbnail`)
+        }
+
+        let collapseUrl:string = ''
+
+
+        for (const aHref of document.querySelectorAll('.rex-local-search-widget a')) {
+          const href = aHref.getAttribute('href')
+
+          if (collapseUrl === '' && href?.startsWith('/search?')) {
+            collapseUrl = href
+          }
+        }
+
+        for (const aHref of clonedElement.querySelectorAll('a')) {
+          aHref.setAttribute('href', collapseUrl)
+        }
+
+        firstParent.before(clonedElement)
       }
     }
+
+    super.collapseElement(element)
   }
 }
