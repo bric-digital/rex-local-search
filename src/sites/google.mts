@@ -4,6 +4,10 @@ const PREVIEW_MIN_WIDTH = 48
 
 const SITE_NAME = 'Google Places'
 
+const BREADCRUMB_URL = 'https://www.google.com'
+
+const BREADCRUMB_PATH = ' › Places'
+
 const MAP_PIN_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#ea4335"/><path fill="#ffffff" transform="translate(3.6 3.6) scale(0.7)" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>')
 
 export class GoogleLocalSite extends LocalSearchSite {
@@ -160,7 +164,7 @@ export class GoogleLocalSite extends LocalSearchSite {
           for (const cite of noTran.querySelectorAll('cite')) {
             console.log(`[rex-local-search:google] Found breadcrumb`)
 
-            cite.innerText = 'TODO: URL breadcrumb'
+            this.replaceBreadcrumb(cite)
           }
 
           const pageImgs = clonedElement.querySelectorAll('img[data-csiid]')
@@ -260,5 +264,13 @@ export class GoogleLocalSite extends LocalSearchSite {
         siteName.textContent = SITE_NAME
       }
     }
+  }
+
+  replaceBreadcrumb(cite:HTMLElement) {
+    const path = cite.querySelector('span') ?? document.createElement('span')
+
+    path.textContent = BREADCRUMB_PATH
+
+    cite.replaceChildren(BREADCRUMB_URL, path)
   }
 }
