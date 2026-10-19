@@ -60,6 +60,7 @@ test.describe('REX Local Search', () => {
       const copy = page.locator(layout.copySelector)
 
       await expect(copy.locator('img[alt="Thumbnail"]')).toHaveAttribute('src', mapSource)
+      await expect(copy.locator(`img[src="${mapSource}"]`)).toHaveCount(1)
       await expect(copy.locator('img[alt="Site icon"]')).toHaveAttribute('src', /^data:image\/svg\+xml/)
 
       await expect(page.locator('img[alt="Thumbnail"]').last()).not.toHaveAttribute('src', mapSource)
@@ -113,5 +114,17 @@ test.describe('REX Local Search', () => {
 
     await expect(description).toContainText(/Example Plumbing.*5\.0.*476.*Chicago, IL/)
     await expect(description).not.toContainText('years in business')
+  })
+
+  test('Collapse adds the local pack\'s map as a thumbnail when the copied result has none.', async ({ page, serviceWorker }) => {
+    await loadResultsPage(page, serviceWorker, 'google-results-no-thumbnail.html')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    const mapSource = await page.locator('img[alt="Map"]').getAttribute('src')
+    const copy = page.locator('#rso > :first-child')
+
+    await expect(copy.locator(`img[src="${mapSource}"]`)).toBeVisible()
+    await expect(page.locator('#rso > :nth-child(2) img')).toHaveCount(1)
   })
 })
