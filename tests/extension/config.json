@@ -24,8 +24,8 @@
               "offset": 0,
               "title": "Local results for {{query}}",
               "descriptions": "Nearby: {{placelist:3}}",
-              "icon": "extension:google-logo",
-              "preview": "results.0.preview|extension:google-static-map"
+              "icon": "extension:map-pin",
+              "preview": "pack:map|results.0.preview"
             }, 
             "rex-local-search-ai-widget-off": {
               "operation": "hide"

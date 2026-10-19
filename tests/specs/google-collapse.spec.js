@@ -7,10 +7,29 @@ import { test, expect } from './fixtures.js'
 // Google's search URL so the module treats it as a search page without any
 // request reaching Google.
 const staticDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../scripts/express/static')
-async function loadResultsPage(page, serviceWorker, fileName, query = 'pizza') {
-  // The page script reads the configuration once, so a search loaded before
-  // rex-core has stored it is never processed.
+
+const CONFIGURED_ICON = 'data:image/gif;base64,R0lGODlhAQABAIAAAP8A/wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='
+
+// The page script reads the configuration once, so a search loaded before
+// rex-core has stored it is never processed.
+async function waitForConfiguration(serviceWorker) {
   await expect.poll(() => serviceWorker.evaluate(() => self.rexCorePlugin.fetchConfiguration().then((configuration) => configuration?.local_search !== undefined)), { timeout: 15000 }).toBe(true)
+}
+
+async function setCollapseSettings(serviceWorker, settings) {
+  await waitForConfiguration(serviceWorker)
+
+  await serviceWorker.evaluate(async (newSettings) => {
+    const configuration = await self.rexCorePlugin.fetchConfiguration()
+
+    Object.assign(configuration.local_search.sites.google.manipulations['rex-local-search-widget'], newSettings)
+
+    await self.rexCorePlugin.updateConfiguration(configuration)
+  }, settings)
+}
+
+async function loadResultsPage(page, serviceWorker, fileName, query = 'pizza') {
+  await waitForConfiguration(serviceWorker)
 
   await page.route('https://www.google.com/search?**', (route) => route.fulfill({ path: path.join(staticDir, fileName) }))
 
@@ -118,23 +137,64 @@ test.describe('REX Local Search', () => {
   test('Collapse fills the configured title template with the search query.', async ({ page, serviceWorker }) => {
     // A template unlike the module's default, so only a title read from the
     // configuration can pass.
-    const titleTemplate = 'Configured {{query}} title'
-
-    await expect.poll(() => serviceWorker.evaluate(() => self.rexCorePlugin.fetchConfiguration().then((configuration) => configuration?.local_search !== undefined)), { timeout: 15000 }).toBe(true)
-
-    await serviceWorker.evaluate(async (template) => {
-      const configuration = await self.rexCorePlugin.fetchConfiguration()
-
-      configuration.local_search.sites.google.manipulations['rex-local-search-widget'].title = template
-
-      await self.rexCorePlugin.updateConfiguration(configuration)
-    }, titleTemplate)
+    await setCollapseSettings(serviceWorker, { title: 'Configured {{query}} title' })
 
     await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html', 'calzone')
 
     await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
 
     await expect(page.locator('#rso > :first-child h3')).toHaveText('Configured calzone title')
+  })
+
+  test('Collapse fills the configured description template, limiting the place list.', async ({ page, serviceWorker }) => {
+    await setCollapseSettings(serviceWorker, { descriptions: 'Configured {{query}}: {{placelist:1}}' })
+
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html', 'calzone')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    const description = page.locator('#rso > :first-child [data-sncf="1"]')
+
+    await expect(description).toHaveText(/^Configured calzone: 1\. Example Pizzeria\./)
+    await expect(description).not.toContainText('Another Pizzeria')
+  })
+
+  test('Collapse uses the first configured icon source that exists.', async ({ page, serviceWorker }) => {
+    await setCollapseSettings(serviceWorker, { icon: `extension:not-built-in|${CONFIGURED_ICON}` })
+
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    await expect(page.locator('#rso > :first-child img[alt="Site icon"]')).toHaveAttribute('src', CONFIGURED_ICON)
+  })
+
+  test('Collapse falls back to the default images when no configured source exists.', async ({ page, serviceWorker }) => {
+    await setCollapseSettings(serviceWorker, { icon: 'extension:google-logo', preview: 'extension:google-static-map' })
+
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    const mapSource = await page.locator('img[alt="Map"]').getAttribute('src')
+    const copy = page.locator('#rso > :first-child')
+
+    await expect(copy.locator('img[alt="Site icon"]')).toHaveAttribute('src', /^data:image\/svg\+xml/)
+    await expect(copy.locator('img[alt="Site icon"]')).toBeVisible()
+    await expect(copy.locator('img[alt="Thumbnail"]')).toHaveAttribute('src', mapSource)
+    await expect(copy.locator('img[alt="Thumbnail"]')).toBeVisible()
+  })
+
+  test('Collapse can preview a place\'s own photo, counting organic places only.', async ({ page, serviceWorker }) => {
+    await setCollapseSettings(serviceWorker, { preview: 'results.1.preview|pack:map' })
+
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    const placePhoto = await page.locator('img[alt="Place photo"]').getAttribute('src')
+
+    await expect(page.locator('#rso > :first-child img[alt="Thumbnail"]')).toHaveAttribute('src', placePhoto)
   })
 
   test('Collapse adds the local pack\'s map as a thumbnail when the copied result has none.', async ({ page, serviceWorker }) => {

@@ -28,6 +28,20 @@ interface LocalPlace {
 
 const MAP_PIN_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#ea4335"/><path fill="#ffffff" transform="translate(3.6 3.6) scale(0.7)" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>')
 
+const BUILT_IN_IMAGES:{[name:string]: string} = {
+  'map-pin': MAP_PIN_ICON
+}
+
+const DEFAULT_DESCRIPTION = '{{placelist:3}}'
+
+const DEFAULT_ICON = 'extension:map-pin'
+
+const DEFAULT_PREVIEW = 'pack:map|results.0.preview'
+
+const PLACE_PREVIEW_PATTERN = /^results\.(\d+)\.preview$/
+
+const IMAGE_URL_PATTERN = /^(?:https?:|data:image\/)/
+
 export class GoogleLocalSite extends LocalSearchSite {
   name():string {
     return 'Google'
@@ -161,7 +175,7 @@ export class GoogleLocalSite extends LocalSearchSite {
         const clonedElement:HTMLElement = firstParent.cloneNode(true) as HTMLElement
 
         const h3s = clonedElement.querySelectorAll('h3')
-        const title = this.fillTemplate(manipulation.title ?? DEFAULT_TITLE)
+        const title = this.fillTemplate(manipulation.title ?? DEFAULT_TITLE, element)
 
         for (const h3 of h3s) {
           console.log(`[rex-local-search:google] Found title`)
@@ -170,7 +184,7 @@ export class GoogleLocalSite extends LocalSearchSite {
         }
 
         const descs = clonedElement.querySelectorAll('[data-sncf="1"]')
-        const description = this.describePlaces(element)
+        const description = this.fillTemplate(manipulation.descriptions ?? DEFAULT_DESCRIPTION, element)
 
         for (const desc of descs) {
           (desc as HTMLElement).innerText = description
@@ -215,7 +229,7 @@ export class GoogleLocalSite extends LocalSearchSite {
           console.log(`[rex-local-search:google] Found page thumbnail`)
         }
 
-        this.replaceImages(firstParent, clonedElement, element)
+        this.replaceImages(firstParent, clonedElement, element, manipulation)
         this.replaceSiteName(clonedElement)
 
         let collapseUrl:string = ''
@@ -246,37 +260,89 @@ export class GoogleLocalSite extends LocalSearchSite {
     super.collapseElement(element, manipulation)
   }
 
-  fillTemplate(template:string):string {
-    const values:{[token:string]: string} = {
-      query: new URL(window.location.href).searchParams.get('q') ?? ''
-    }
-
-    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, token:string) => values[token] ?? '')
+  fillTemplate(template:string, localPack:HTMLElement):string {
+    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, token:string) => this.templateValue(token, localPack))
   }
 
-  replaceImages(original:HTMLElement, copy:HTMLElement, localPack:HTMLElement) {
-    const mapImage = localPack.querySelector<HTMLImageElement>('.rex-local-search-widget-map img')
+  templateValue(token:string, localPack:HTMLElement):string {
+    const [name, argument] = token.split(':')
+
+    if (name === 'query') {
+      return new URL(window.location.href).searchParams.get('q') ?? ''
+    }
+
+    if (name === 'placelist') {
+      const limit = parseInt(argument, 10)
+
+      return this.describePlaces(localPack, Number.isNaN(limit) ? undefined : limit)
+    }
+
+    return ''
+  }
+
+  resolveImage(sources:string, localPack:HTMLElement):string|null {
+    for (const source of sources.split('|').map((part) => part.trim())) {
+      const image = this.imageFromSource(source, localPack)
+
+      if (image !== null) {
+        return image
+      }
+    }
+
+    return null
+  }
+
+  imageFromSource(source:string, localPack:HTMLElement):string|null {
+    if (source.startsWith('extension:')) {
+      return BUILT_IN_IMAGES[source.slice('extension:'.length)] ?? null
+    }
+
+    if (source === 'pack:map') {
+      return localPack.querySelector<HTMLImageElement>('.rex-local-search-widget-map img')?.src || null
+    }
+
+    const placePreview = source.match(PLACE_PREVIEW_PATTERN)
+
+    if (placePreview !== null) {
+      return this.organicRows(localPack)[parseInt(placePreview[1], 10)]?.querySelector('img')?.src || null
+    }
+
+    if (IMAGE_URL_PATTERN.test(source)) {
+      return source
+    }
+
+    return null
+  }
+
+  replaceImages(original:HTMLElement, copy:HTMLElement, localPack:HTMLElement, manipulation:REXLocalSearchSiteManipulationConfiguration) {
+    const icon = this.resolveImage(manipulation.icon ?? DEFAULT_ICON, localPack) ?? this.resolveImage(DEFAULT_ICON, localPack)
+    const preview = this.resolveImage(manipulation.preview ?? DEFAULT_PREVIEW, localPack) ?? this.resolveImage(DEFAULT_PREVIEW, localPack)
     const copiedImages = copy.querySelectorAll('img')
     let previewShown = false
 
     original.querySelectorAll('img').forEach((originalImage, index) => {
       const copiedImage = copiedImages[index]
+      const isIcon = originalImage.getBoundingClientRect().width < PREVIEW_MIN_WIDTH
+      const source = isIcon ? icon : preview
 
       copiedImage.removeAttribute('srcset')
 
-      if (originalImage.getBoundingClientRect().width < PREVIEW_MIN_WIDTH) {
-        copiedImage.src = MAP_PIN_ICON
-      } else if (mapImage !== null) {
-        copiedImage.src = mapImage.src
+      if (source === null) {
+        copiedImage.style.display = 'none'
+
+        return
+      }
+
+      copiedImage.src = source
+
+      if (isIcon === false) {
         copiedImage.style.objectFit = 'cover'
         previewShown = true
-      } else {
-        copiedImage.style.display = 'none'
       }
     })
 
-    if (previewShown === false && mapImage !== null) {
-      this.addPreview(copy, mapImage.src)
+    if (previewShown === false && preview !== null) {
+      this.addPreview(copy, preview)
     }
   }
 
@@ -322,21 +388,26 @@ export class GoogleLocalSite extends LocalSearchSite {
     cite.replaceChildren(BREADCRUMB_URL, path)
   }
 
-  describePlaces(localPack:HTMLElement):string {
-    return [...localPack.querySelectorAll<HTMLElement>('.rex-local-search-widget-row')]
+  describePlaces(localPack:HTMLElement, limit?:number):string {
+    return this.organicRows(localPack)
       .map((row) => this.parsePlace(row))
       .filter((place):place is LocalPlace => place !== null)
+      .slice(0, limit)
       .map((place, index) => this.formatPlace(place, index + 1))
       .join(' · ')
   }
 
+  organicRows(localPack:HTMLElement):HTMLElement[] {
+    return [...localPack.querySelectorAll<HTMLElement>('.rex-local-search-widget-row')]
+      .filter((row) => this.rowLines(row).includes('Sponsored') === false)
+  }
+
+  rowLines(row:HTMLElement):string[] {
+    return row.innerText.split('\n').map((line) => line.trim()).filter((line) => line !== '')
+  }
+
   parsePlace(row:HTMLElement):LocalPlace|null {
-    const lines = row.innerText.split('\n').map((line) => line.trim()).filter((line) => line !== '')
-
-    if (lines.includes('Sponsored')) {
-      return null
-    }
-
+    const lines = this.rowLines(row)
     const name = row.querySelector('[role="heading"]')?.textContent?.trim() ?? lines[0]
 
     if (name === undefined || name === '') {
