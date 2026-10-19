@@ -77,5 +77,18 @@ test.describe('REX Local Search', () => {
       await expect(siteName).not.toHaveText('')
       await expect(page.getByText('Example Site')).toHaveCount(1)
     })
+
+    test(`Collapse replaces the copied URL line and keeps its path styling (${layout.name}).`, async ({ page, serviceWorker }) => {
+      await loadResultsPage(page, serviceWorker, layout.fileName)
+
+      await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+      const copiedCite = page.locator(layout.copySelector).locator('cite')
+
+      await expect(copiedCite).not.toContainText('example.com')
+      await expect(copiedCite).not.toContainText('Pizza')
+      await expect(copiedCite.locator('span')).not.toHaveText('')
+      await expect(page.locator('cite').filter({ hasText: 'example.com' })).toHaveCount(1)
+    })
   }
 })
