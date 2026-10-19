@@ -1,5 +1,9 @@
 import { LocalSearchSite } from '../types.mjs'
 
+const PREVIEW_MIN_WIDTH = 48
+
+const MAP_PIN_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#ea4335"/><path fill="#ffffff" transform="translate(3.6 3.6) scale(0.7)" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>')
+
 export class GoogleLocalSite extends LocalSearchSite {
   name():string {
     return 'Google'
@@ -185,6 +189,8 @@ export class GoogleLocalSite extends LocalSearchSite {
           console.log(`[rex-local-search:google] Found page thumbnail`)
         }
 
+        this.replaceImages(firstParent, clonedElement, element)
+
         let collapseUrl:string = ''
 
 
@@ -211,5 +217,25 @@ export class GoogleLocalSite extends LocalSearchSite {
     }
 
     super.collapseElement(element)
+  }
+
+  replaceImages(original:HTMLElement, copy:HTMLElement, localPack:HTMLElement) {
+    const mapImage = localPack.querySelector<HTMLImageElement>('.rex-local-search-widget-map img')
+    const copiedImages = copy.querySelectorAll('img')
+
+    original.querySelectorAll('img').forEach((originalImage, index) => {
+      const copiedImage = copiedImages[index]
+
+      copiedImage.removeAttribute('srcset')
+
+      if (originalImage.getBoundingClientRect().width < PREVIEW_MIN_WIDTH) {
+        copiedImage.src = MAP_PIN_ICON
+      } else if (mapImage !== null) {
+        copiedImage.src = mapImage.src
+        copiedImage.style.objectFit = 'cover'
+      } else {
+        copiedImage.style.display = 'none'
+      }
+    })
   }
 }
