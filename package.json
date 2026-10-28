@@ -38,7 +38,7 @@
         "@bric/rex-core": "github:bric-digital/rex-core",
         "@bric/rex-types": "github:bric-digital/rex-types",
         "check-types": "^11.2.3",
-        "chrome-types": "^0.1.457",
+        "chrome-types": "^0.1.459",
         "psl": "^1.15.0"
     },
     "devDependencies": {
