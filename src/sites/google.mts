@@ -174,6 +174,8 @@ export class GoogleLocalSite extends LocalSearchSite {
         console.log(`[rex-local-search:google] have first parent`)
         const clonedElement:HTMLElement = firstParent.cloneNode(true) as HTMLElement
 
+        clonedElement.classList.add('rex-local-search-collapsed')
+
         const h3s = clonedElement.querySelectorAll('h3')
         const title = this.fillTemplate(manipulation.title ?? DEFAULT_TITLE, element)
 

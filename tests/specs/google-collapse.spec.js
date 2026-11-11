@@ -88,6 +88,15 @@ test.describe('REX Local Search', () => {
       await expect(page.locator('img[alt="Site icon"]').last()).not.toHaveAttribute('src', /^data:image\/svg\+xml/)
     })
 
+    test(`Collapse marks only the copy so it can be styled (${layout.name}).`, async ({ page, serviceWorker }) => {
+      await loadResultsPage(page, serviceWorker, layout.fileName)
+
+      await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+      await expect(page.locator(layout.copySelector)).toHaveClass(/\brex-local-search-collapsed\b/)
+      await expect(page.locator('.rex-local-search-collapsed')).toHaveCount(1)
+    })
+
     test(`Collapse replaces the copied site's name (${layout.name}).`, async ({ page, serviceWorker }) => {
       await loadResultsPage(page, serviceWorker, layout.fileName)
 
