@@ -64,8 +64,9 @@ test.describe('REX Local Search', () => {
   })
 
   const layouts = [
-    { name: 'local pack in the results column', fileName: 'google-results-people-also-ask-first.html', copySelector: '#local-pack-wrapper > :first-child' },
-    { name: 'full-width local pack', fileName: 'google-results-full-width-local-pack.html', copySelector: '#rso > :first-child' },
+    { name: 'local pack in the results column', fileName: 'google-results-people-also-ask-first.html', copySelector: '#local-pack-wrapper > :first-child', siteNameSelector: '.notranslate > div' },
+    { name: 'full-width local pack', fileName: 'google-results-full-width-local-pack.html', copySelector: '#rso > :first-child', siteNameSelector: '.notranslate > div' },
+    { name: 'result without a notranslate block', fileName: 'google-results-no-notranslate.html', copySelector: '#rso > :first-child', siteNameSelector: '.CA5RN > div' },
   ]
 
   for (const layout of layouts) {
@@ -80,6 +81,8 @@ test.describe('REX Local Search', () => {
       await expect(copy.locator('img[alt="Thumbnail"]')).toHaveAttribute('src', mapSource)
       await expect(copy.locator(`img[src="${mapSource}"]`)).toHaveCount(1)
       await expect(copy.locator('img[alt="Site icon"]')).toHaveAttribute('src', /^data:image\/svg\+xml/)
+      await expect(copy.locator('img[alt="Site icon"]')).toBeVisible()
+      await expect(copy.locator('img[alt="Thumbnail"]')).toBeVisible()
 
       await expect(page.locator('img[alt="Thumbnail"]').last()).not.toHaveAttribute('src', mapSource)
       await expect(page.locator('img[alt="Site icon"]').last()).not.toHaveAttribute('src', /^data:image\/svg\+xml/)
@@ -90,7 +93,7 @@ test.describe('REX Local Search', () => {
 
       await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
 
-      const siteName = page.locator(layout.copySelector).locator('.notranslate > div').first()
+      const siteName = page.locator(layout.copySelector).locator(layout.siteNameSelector).first()
 
       await expect(siteName).not.toContainText('Example Site')
       await expect(siteName).not.toHaveText('')

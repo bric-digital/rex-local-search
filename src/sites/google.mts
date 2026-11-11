@@ -194,13 +194,13 @@ export class GoogleLocalSite extends LocalSearchSite {
 
         const noTrans = clonedElement.querySelectorAll('.notranslate')
 
-        for (const noTran of noTrans) {
-          for (const cite of noTran.querySelectorAll('cite')) {
-            console.log(`[rex-local-search:google] Found breadcrumb`)
+        for (const cite of clonedElement.querySelectorAll('cite')) {
+          console.log(`[rex-local-search:google] Found breadcrumb`)
 
-            this.replaceBreadcrumb(cite)
-          }
+          this.replaceBreadcrumb(cite)
+        }
 
+        if (noTrans.length > 0) {
           const pageImgs = clonedElement.querySelectorAll('img[data-csiid]')
 
           for (const pageImg of pageImgs) { // TODO: Replace with generic site icon
@@ -334,6 +334,7 @@ export class GoogleLocalSite extends LocalSearchSite {
       }
 
       copiedImage.src = source
+      copiedImage.style.display = ''
 
       if (isIcon === false) {
         copiedImage.style.objectFit = 'cover'
