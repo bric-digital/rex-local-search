@@ -6,7 +6,7 @@ const PREVIEW_MIN_WIDTH = 48
 
 const PREVIEW_SIZE = 92
 
-const SITE_NAME = 'Google Places'
+const SITE_NAME = 'Google'
 
 const BREADCRUMB_URL = 'https://www.google.com'
 
@@ -128,8 +128,12 @@ export class GoogleLocalSite extends LocalSearchSite {
         }
       }
 
+      if (widgetsFound > 0) {
+        this.detectFilterChips()
+      }
+
       for (const widgetElement of document.querySelectorAll('.rex-local-search-widget')) {
-        // 2. Find local-search-widget-map 
+        // 2. Find local-search-widget-map
 
         console.log('[rex-local-search:google] Detecting local search widget map...')
 
@@ -158,6 +162,12 @@ export class GoogleLocalSite extends LocalSearchSite {
 
       resolve()
     })
+  }
+
+  detectFilterChips() {
+    const chip = document.querySelector('[role="listitem"] > a[aria-label^="Add "], [role="listitem"] > a[aria-label^="Remove "]')
+
+    chip?.closest('[role="list"]')?.classList.add('rex-local-search-filters')
   }
 
   collapseElement(element:HTMLElement, manipulation:REXLocalSearchSiteManipulationConfiguration) {

@@ -28,6 +28,18 @@ async function setCollapseSettings(serviceWorker, settings) {
   }, settings)
 }
 
+async function addManipulation(serviceWorker, cssClass, manipulation) {
+  await waitForConfiguration(serviceWorker)
+
+  await serviceWorker.evaluate(async ([newClass, newManipulation]) => {
+    const configuration = await self.rexCorePlugin.fetchConfiguration()
+
+    configuration.local_search.sites.google.manipulations[newClass] = newManipulation
+
+    await self.rexCorePlugin.updateConfiguration(configuration)
+  }, [cssClass, manipulation])
+}
+
 async function loadResultsPage(page, serviceWorker, fileName, query = 'pizza') {
   await waitForConfiguration(serviceWorker)
 
@@ -207,6 +219,26 @@ test.describe('REX Local Search', () => {
     const placePhoto = await page.locator('img[alt="Place photo"]').getAttribute('src')
 
     await expect(page.locator('#rso > :first-child img[alt="Thumbnail"]')).toHaveAttribute('src', placePhoto)
+  })
+
+  test('A hide manipulation removes the filter chips above a local pack.', async ({ page, serviceWorker }) => {
+    await addManipulation(serviceWorker, 'rex-local-search-filters', { operation: 'hide' })
+
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    await expect(page.locator('#filter-chips [role="list"]')).toBeHidden()
+  })
+
+  test('Filter chips stay when the page has no local pack.', async ({ page, serviceWorker }) => {
+    await addManipulation(serviceWorker, 'rex-local-search-filters', { operation: 'hide' })
+
+    await loadResultsPage(page, serviceWorker, 'google-results-no-local-pack.html')
+
+    await expect(page.locator('.rex-local-search-result').first()).toBeAttached({ timeout: 15000 })
+
+    await expect(page.locator('#filter-chips [role="list"]')).toBeVisible()
   })
 
   test('Collapse adds the local pack\'s map as a thumbnail when the copied result has none.', async ({ page, serviceWorker }) => {
