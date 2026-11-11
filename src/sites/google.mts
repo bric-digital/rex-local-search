@@ -121,7 +121,7 @@ export class GoogleLocalSite extends LocalSearchSite {
   collapseElement(element:HTMLElement) {
     console.log('[rex-local-search:google] collapseElement')
 
-    const matches = document.querySelectorAll('.rex-local-search-result')
+    const matches = document.querySelectorAll('.rex-local-search-result:has(h3):has([data-sncf="1"])')
 
     console.log(`[rex-local-search:google] ${matches.length}`)
 
@@ -147,8 +147,6 @@ export class GoogleLocalSite extends LocalSearchSite {
 
           console.log(`[rex-local-search:google] Found description`)
         }
-
-        firstParent.before(clonedElement)
 
         const noTrans = clonedElement.querySelectorAll('.notranslate')
 
@@ -202,7 +200,13 @@ export class GoogleLocalSite extends LocalSearchSite {
           aHref.setAttribute('href', collapseUrl)
         }
 
-        firstParent.before(clonedElement)
+        const resultList = firstParent.parentElement
+
+        if (resultList !== null && resultList.contains(element) === false) {
+          resultList.prepend(clonedElement)
+        } else {
+          element.before(clonedElement)
+        }
       }
     }
 
