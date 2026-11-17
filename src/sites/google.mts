@@ -1,4 +1,6 @@
-import { LocalSearchSite } from '../types.mjs'
+import { LocalSearchSite, REXLocalSearchSiteManipulationConfiguration } from '../types.mjs'
+
+const DEFAULT_TITLE = 'Local results for {{query}}'
 
 const PREVIEW_MIN_WIDTH = 48
 
@@ -144,7 +146,7 @@ export class GoogleLocalSite extends LocalSearchSite {
     })
   }
 
-  collapseElement(element:HTMLElement) {
+  collapseElement(element:HTMLElement, manipulation:REXLocalSearchSiteManipulationConfiguration) {
     console.log('[rex-local-search:google] collapseElement')
 
     const matches = document.querySelectorAll('.rex-local-search-result:has(h3):has([data-sncf="1"])')
@@ -159,11 +161,12 @@ export class GoogleLocalSite extends LocalSearchSite {
         const clonedElement:HTMLElement = firstParent.cloneNode(true) as HTMLElement
 
         const h3s = clonedElement.querySelectorAll('h3')
+        const title = this.fillTemplate(manipulation.title ?? DEFAULT_TITLE)
 
         for (const h3 of h3s) {
           console.log(`[rex-local-search:google] Found title`)
 
-          h3.innerText = 'TODO: Mirror widget title'
+          h3.innerText = title
         }
 
         const descs = clonedElement.querySelectorAll('[data-sncf="1"]')
@@ -240,7 +243,15 @@ export class GoogleLocalSite extends LocalSearchSite {
       }
     }
 
-    super.collapseElement(element)
+    super.collapseElement(element, manipulation)
+  }
+
+  fillTemplate(template:string):string {
+    const values:{[token:string]: string} = {
+      query: new URL(window.location.href).searchParams.get('q') ?? ''
+    }
+
+    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, token:string) => values[token] ?? '')
   }
 
   replaceImages(original:HTMLElement, copy:HTMLElement, localPack:HTMLElement) {
