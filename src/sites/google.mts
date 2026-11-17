@@ -2,6 +2,8 @@ import { LocalSearchSite } from '../types.mjs'
 
 const PREVIEW_MIN_WIDTH = 48
 
+const PREVIEW_SIZE = 92
+
 const SITE_NAME = 'Google Places'
 
 const BREADCRUMB_URL = 'https://www.google.com'
@@ -244,6 +246,7 @@ export class GoogleLocalSite extends LocalSearchSite {
   replaceImages(original:HTMLElement, copy:HTMLElement, localPack:HTMLElement) {
     const mapImage = localPack.querySelector<HTMLImageElement>('.rex-local-search-widget-map img')
     const copiedImages = copy.querySelectorAll('img')
+    let previewShown = false
 
     original.querySelectorAll('img').forEach((originalImage, index) => {
       const copiedImage = copiedImages[index]
@@ -255,10 +258,29 @@ export class GoogleLocalSite extends LocalSearchSite {
       } else if (mapImage !== null) {
         copiedImage.src = mapImage.src
         copiedImage.style.objectFit = 'cover'
+        previewShown = true
       } else {
         copiedImage.style.display = 'none'
       }
     })
+
+    if (previewShown === false && mapImage !== null) {
+      this.addPreview(copy, mapImage.src)
+    }
+  }
+
+  addPreview(copy:HTMLElement, source:string) {
+    const preview = document.createElement('img')
+
+    preview.src = source
+    preview.alt = ''
+    preview.style.cssText = `position: absolute; top: 0; right: 0; width: ${PREVIEW_SIZE}px; height: ${PREVIEW_SIZE}px; object-fit: cover; border-radius: 8px;`
+
+    copy.style.position = 'relative'
+    copy.style.paddingRight = `${PREVIEW_SIZE + 16}px`
+    copy.style.minHeight = `${PREVIEW_SIZE}px`
+
+    copy.append(preview)
   }
 
   replaceSiteName(copy:HTMLElement) {
