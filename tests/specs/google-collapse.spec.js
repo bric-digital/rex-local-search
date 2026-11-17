@@ -65,5 +65,17 @@ test.describe('REX Local Search', () => {
       await expect(page.locator('img[alt="Thumbnail"]').last()).not.toHaveAttribute('src', mapSource)
       await expect(page.locator('img[alt="Site icon"]').last()).not.toHaveAttribute('src', /^data:image\/svg\+xml/)
     })
+
+    test(`Collapse replaces the copied site's name (${layout.name}).`, async ({ page, serviceWorker }) => {
+      await loadResultsPage(page, serviceWorker, layout.fileName)
+
+      await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+      const siteName = page.locator(layout.copySelector).locator('.notranslate > div').first()
+
+      await expect(siteName).not.toContainText('Example Site')
+      await expect(siteName).not.toHaveText('')
+      await expect(page.getByText('Example Site')).toHaveCount(1)
+    })
   }
 })
