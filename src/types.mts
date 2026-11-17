@@ -29,6 +29,9 @@
 export interface REXLocalSearchSiteManipulationConfiguration {
   operation:'collapse'|'hide'
   title?:string
+  descriptions?:string
+  icon?:string
+  preview?:string
 }
 
 export interface REXLocalSearchSiteStyleConfiguration {
