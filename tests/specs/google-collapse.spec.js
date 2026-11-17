@@ -90,5 +90,28 @@ test.describe('REX Local Search', () => {
       await expect(copiedCite.locator('span')).not.toHaveText('')
       await expect(page.locator('cite').filter({ hasText: 'example.com' })).toHaveCount(1)
     })
+
+    test(`Collapse describes the local pack's organic places (${layout.name}).`, async ({ page, serviceWorker }) => {
+      await loadResultsPage(page, serviceWorker, layout.fileName)
+
+      await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+      const description = page.locator(layout.copySelector).locator('[data-sncf="1"]')
+
+      await expect(description).toContainText(/Example Pizzeria.*4\.5.*27K.*130 E Example St.*Another Pizzeria.*4\.7.*21K.*162 E Example St/)
+      await expect(description).not.toContainText('Sponsored')
+      await expect(description).not.toContainText('Great crust')
+    })
   }
+
+  test('Collapse describes a service business by its city, without its years in business.', async ({ page, serviceWorker }) => {
+    await loadResultsPage(page, serviceWorker, 'google-results-full-width-local-pack.html')
+
+    await expect(page.locator('img[alt="Map"]')).toBeHidden({ timeout: 15000 })
+
+    const description = page.locator('#rso > :first-child').locator('[data-sncf="1"]')
+
+    await expect(description).toContainText(/Example Plumbing.*5\.0.*476.*Chicago, IL/)
+    await expect(description).not.toContainText('years in business')
+  })
 })
